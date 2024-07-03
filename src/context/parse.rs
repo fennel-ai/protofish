@@ -94,7 +94,13 @@ impl MessageBuilder {
                 }
                 Rule::option => options.push(ProtoOption::parse(p)),
                 Rule::oneof => oneofs.push(OneofBuilder::parse(p)),
-                Rule::mapField => unimplemented!("Maps are not supported"),
+                Rule::mapField => {
+                    let map_builder = PseudoMapBuilder::parse(p);
+                    let message_builder = map_builder.create_message_builder();
+                    inner_types.push(InnerTypeBuilder::Message(message_builder));
+                    fields.push(map_builder.create_field_builder());
+                }
+
                 Rule::reserved => {} // We don't need to care about reserved field numbers.
                 Rule::emptyStatement => {}
                 r => unreachable!("{:?}: {:?}", r, p),
@@ -107,6 +113,65 @@ impl MessageBuilder {
             oneofs,
             inner_types,
             options,
+        }
+    }
+}
+
+impl PseudoMapBuilder {
+    pub fn parse(p: Pair<Rule>) -> Self {
+        let mut inner = p.into_inner();
+        let key_type = parse_field_type(inner.next().unwrap().as_str());
+        let value_type = parse_field_type(inner.next().unwrap().as_str());
+        let field_name = inner.next().unwrap().as_str().to_string();
+        let number = parse_uint_literal(inner.next().unwrap());
+
+        let options = match inner.next() {
+            Some(p) => ProtoOption::parse_options(p.into_inner()),
+            None => vec![],
+        };
+        Self {
+            key_type,
+            value_type,
+            field_name,
+            number,
+            options,
+        }
+    }
+
+    fn entry_type_name(&self) -> String {
+        format!("[map {}]FieldEntry", self.field_name)
+    }
+
+    pub fn create_message_builder(&self) -> MessageBuilder {
+        MessageBuilder {
+            name: self.entry_type_name(),
+            fields: vec![
+                FieldBuilder {
+                    multiplicity: Multiplicity::Single,
+                    field_type: self.key_type.clone(),
+                    name: "key".to_string(),
+                    number: 1,
+                    options: vec![],
+                },
+                FieldBuilder {
+                    multiplicity: Multiplicity::Single,
+                    field_type: self.value_type.clone(),
+                    name: "value".to_string(),
+                    number: 2,
+                    options: vec![],
+                },
+            ],
+            ..Default::default()
+        }
+    }
+
+    pub fn create_field_builder(&self) -> FieldBuilder {
+        FieldBuilder {
+            multiplicity: Multiplicity::Repeated,
+            field_type: FieldTypeBuilder::Unknown(self.entry_type_name()),
+            name: self.field_name.clone(),
+            number: self.number,
+            options: self.options.clone(),
         }
     }
 }
@@ -171,11 +236,11 @@ impl FieldBuilder {
         let mut inner = p.into_inner();
         let multiplicity = match inner.next().unwrap().into_inner().next() {
             Some(t) => {
-                let multiplicity = t.into_inner().next().unwrap().as_rule();
-                match multiplicity {
+                let rule = t.into_inner().next().unwrap().as_rule();
+                match rule {
                     Rule::optional => Multiplicity::Optional,
                     Rule::repeated => Multiplicity::Repeated,
-                    r => unreachable!("{:?}: {:?}", r, multiplicity),
+                    r => unreachable!("{:?}: {:?}", r, rule),
                 }
             }
             None => Multiplicity::Single,

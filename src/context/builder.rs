@@ -39,6 +39,15 @@ pub(crate) struct MessageBuilder {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub(crate) struct PseudoMapBuilder {
+    pub(crate) key_type: FieldTypeBuilder,
+    pub(crate) value_type: FieldTypeBuilder,
+    pub(crate) field_name: String,
+    pub(crate) number: u64,
+    pub(crate) options: Vec<ProtoOption>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub(crate) enum InnerTypeBuilder {
     Message(MessageBuilder),
     Enum(EnumBuilder),
