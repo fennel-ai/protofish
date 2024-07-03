@@ -1,6 +1,5 @@
 #[test]
-fn encode_message()
-{
+fn encode_message() {
     use bytes::BufMut;
     use protofish::{
         context::Context,
