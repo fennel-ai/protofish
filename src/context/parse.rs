@@ -757,4 +757,17 @@ mod test {
         let _ = Context::parse(vec!["foo", "bar"]);
         let _ = Context::parse(vec!["foo".to_string(), "bar".to_string()]);
     }
+
+    #[test]
+    fn parse_ident_starts_with_underscore() {
+        assert_eq!(
+            parse_ident(
+                ProtoParser::parse(Rule::fullIdent, "_foo.bar.baz")
+                    .unwrap()
+                    .next()
+                    .unwrap()
+            ),
+            "_foo.bar.baz"
+        );
+    }
 }

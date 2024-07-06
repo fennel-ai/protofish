@@ -20,3 +20,20 @@ fn oneof() {
     "#])
     .unwrap();
 }
+
+#[test]
+fn test_parse_underscore_ident() {
+    use protofish::context::Context;
+
+    // can parse message with underscore in field name
+    Context::parse(&[r#"
+      syntax = "proto3";
+      message Messsage {
+        string s = 1;
+        oneof _customer_id {
+          int64 customer_id = 2;
+        }
+      }
+    "#])
+    .unwrap();
+}
